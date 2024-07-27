@@ -6,33 +6,31 @@ const completeAnime = url.completeAnime;
 const onGoingAnime = url.onGoingAnime;
 const errors = require("../helpers/errors");
 const ImageList = require("../helpers/image_genre").ImageList;
-const e = require("express");
 
 exports.home = (req, res) => {
   let home = {};
   let on_going = [];
   let complete = [];
+  
   Axios.get(baseUrl)
     .then((response) => {
       const $ = cheerio.load(response.data);
       const element = $(".venz");
-      let episode, uploaded_on, day_updated, thumb, title, link, id;
+
+      // Parsing ongoing anime
       element
         .children()
         .eq(0)
         .find("ul > li")
         .each(function () {
-          $(this)
-            .find(".thumb > a")
-            .filter(function () {
-              title = $(this).find(".thumbz > h2").text();
-              thumb = $(this).find(".thumbz > img").attr("src");
-              link = $(this).attr("href");
-              id = link.replace(`${baseUrl}anime/`, "");
-            });
-          uploaded_on = $(this).find(".newnime").text();
-          episode = $(this).find(".epz").text().replace(" ", "");
-          day_updated = $(this).find(".epztipe").text().replace(" ", "");
+          const title = $(this).find(".thumb > a .thumbz > h2").text();
+          const thumb = $(this).find(".thumb > a .thumbz > img").attr("src");
+          const link = $(this).find(".thumb > a").attr("href");
+          const id = link.replace(`${baseUrl}anime/`, "");
+          const uploaded_on = $(this).find(".newnime").text();
+          const episode = $(this).find(".epz").text().trim();
+          const day_updated = $(this).find(".epztipe").text().trim();
+
           on_going.push({
             title,
             id,
@@ -43,29 +41,28 @@ exports.home = (req, res) => {
             link,
           });
         });
+
       home.on_going = on_going;
       return response;
     })
     .then((response) => {
       const $ = cheerio.load(response.data);
       const element = $(".venz");
-      let episode, uploaded_on, score, thumb, title, link, id;
+
+      // Parsing complete anime
       element
         .children()
         .eq(1)
         .find("ul > li")
         .each(function () {
-          $(this)
-            .find(".thumb > a")
-            .filter(function () {
-              title = $(this).find(".thumbz > h2").text();
-              thumb = $(this).find(".thumbz > img").attr("src");
-              link = $(this).attr("href");
-              id = link.replace(`${baseUrl}anime/`, "");
-            });
-          uploaded_on = $(this).find(".newnime").text();
-          episode = $(this).find(".epz").text().replace(" ", "");
-          score = parseFloat($(this).find(".epztipe").text().replace(" ", ""));
+          const title = $(this).find(".thumb > a .thumbz > h2").text();
+          const thumb = $(this).find(".thumb > a .thumbz > img").attr("src");
+          const link = $(this).find(".thumb > a").attr("href");
+          const id = link.replace(`${baseUrl}anime/`, "");
+          const uploaded_on = $(this).find(".newnime").text();
+          const episode = $(this).find(".epz").text().trim();
+          const score = parseFloat($(this).find(".epztipe").text().trim());
+
           complete.push({
             title,
             id,
@@ -76,45 +73,48 @@ exports.home = (req, res) => {
             link,
           });
         });
+
       home.complete = complete;
       res.status(200).json({
         status: "success",
-        baseUrl: baseUrl,
+        baseUrl,
         home,
       });
     })
-    .catch((e) => {
-      console.log(e.message);
+    .catch((err) => {
+      console.error(err.message);
+      res.status(500).json({
+        status: "error",
+        message: "Internal Server Error",
+      });
     });
 };
+
 exports.completeAnimeList = (req, res) => {
-  const params = req.params.page;
-  const page =
-    typeof params === "undefined" ? "" : params === "1" ? "" : `page/${params}`;
-  const fullUrl = `${baseUrl}${completeAnime}${page}`;
-  console.log(fullUrl);
+  const page = req.params.page || "";
+  const pageParam = page === "1" ? "" : `page/${page}`;
+  const fullUrl = `${baseUrl}${completeAnime}${pageParam}`;
+  console.log(`Fetching URL: ${fullUrl}`);
+
   Axios.get(fullUrl)
     .then((response) => {
       const $ = cheerio.load(response.data);
       const element = $(".venz");
       let animeList = [];
-      let episode, uploaded_on, score, thumb, title, link, id;
+
       element
         .children()
         .eq(0)
         .find("ul > li")
         .each(function () {
-          $(this)
-            .find(".thumb > a")
-            .filter(function () {
-              title = $(this).find(".thumbz > h2").text();
-              thumb = $(this).find(".thumbz > img").attr("src");
-              link = $(this).attr("href");
-              id = link.replace(`${baseUrl}anime/`, "");
-            });
-          uploaded_on = $(this).find(".newnime").text();
-          episode = $(this).find(".epz").text().replace(" ", "");
-          score = parseFloat($(this).find(".epztipe").text().replace(" ", ""));
+          const title = $(this).find(".thumb > a .thumbz > h2").text();
+          const thumb = $(this).find(".thumb > a .thumbz > img").attr("src");
+          const link = $(this).find(".thumb > a").attr("href");
+          const id = link.replace(`${baseUrl}anime/`, "");
+          const uploaded_on = $(this).find(".newnime").text();
+          const episode = $(this).find(".epz").text().trim();
+          const score = parseFloat($(this).find(".epztipe").text().trim());
+
           animeList.push({
             title,
             id,
@@ -125,6 +125,7 @@ exports.completeAnimeList = (req, res) => {
             link,
           });
         });
+
       res.status(200).json({
         status: "success",
         baseUrl: fullUrl,
@@ -132,37 +133,39 @@ exports.completeAnimeList = (req, res) => {
       });
     })
     .catch((err) => {
-      console.log(err.message);
+      console.error(err.message);
+      res.status(500).json({
+        status: "error",
+        message: "Internal Server Error",
+      });
     });
 };
+
 exports.onGoingAnimeList = (req, res) => {
-  const params = req.params.page;
-  const page = typeof params === "undefined" ? "" : params === "1" ? "" : `page/${params}`;
-  const fullUrl = `${baseUrl}${onGoingAnime}${page}`;
-  // const url = `${baseUrl}${onGoingAnime}`;
-  // console.log(url);
+  const page = req.params.page || "";
+  const pageParam = page === "1" ? "" : `page/${page}`;
+  const fullUrl = `${baseUrl}${onGoingAnime}${pageParam}`;
+  console.log(`Fetching URL: ${fullUrl}`);
+
   Axios.get(fullUrl)
     .then((response) => {
       const $ = cheerio.load(response.data);
       const element = $(".venz");
       let animeList = [];
-      let episode, uploaded_on, day_updated, thumb, title, link, id;
+
       element
         .children()
         .eq(0)
         .find("ul > li")
         .each(function () {
-          $(this)
-            .find(".thumb > a")
-            .filter(function () {
-              title = $(this).find(".thumbz > h2").text();
-              thumb = $(this).find(".thumbz > img").attr("src");
-              link = $(this).attr("href");
-              id = link.replace(`${baseUrl}anime/`, "");
-            });
-          uploaded_on = $(this).find(".newnime").text();
-          episode = $(this).find(".epz").text().replace(" ", "");
-          day_updated = $(this).find(".epztipe").text().replace(" ", "");
+          const title = $(this).find(".thumb > a .thumbz > h2").text();
+          const thumb = $(this).find(".thumb > a .thumbz > img").attr("src");
+          const link = $(this).find(".thumb > a").attr("href");
+          const id = link.replace(`${baseUrl}anime/`, "");
+          const uploaded_on = $(this).find(".newnime").text();
+          const episode = $(this).find(".epz").text().trim();
+          const day_updated = $(this).find(".epztipe").text().trim();
+
           animeList.push({
             title,
             id,
@@ -173,146 +176,159 @@ exports.onGoingAnimeList = (req, res) => {
             link,
           });
         });
+
       res.status(200).json({
         status: "success",
-        baseUrl: baseUrl,
+        baseUrl,
         animeList,
       });
     })
     .catch((err) => {
-      console.log(err.message);
+      console.error(err.message);
+      res.status(500).json({
+        status: "error",
+        message: "Internal Server Error",
+      });
     });
 };
+
 exports.schedule = (req, res) => {
-  Axios.get(baseUrl + url.schedule).then((response) => {
-    const $ = cheerio.load(response.data);
-    const element = $(".kgjdwl321");
-    let animeList = [];
-    let scheduleList = [];
-    let day;
-    let anime_name, link, id;
-    element.find(".kglist321").each(function () {
-      day = $(this).find("h2").text();
-      animeList = [];
-      $(this)
-        .find("ul > li")
-        .each(function () {
-          anime_name = $(this).find("a").text();
-          link = $(this).find("a").attr("href");
-          id = link.replace(baseUrl + "anime/", "");
-          animeList.push({ anime_name, id, link });
-        });
-      scheduleList.push({ day, animeList });
+  Axios.get(baseUrl + url.schedule)
+    .then((response) => {
+      const $ = cheerio.load(response.data);
+      const element = $(".kgjdwl321");
+      let scheduleList = [];
+      
+      element.find(".kglist321").each(function () {
+        const day = $(this).find("h2").text();
+        let animeList = [];
+
+        $(this)
+          .find("ul > li")
+          .each(function () {
+            const anime_name = $(this).find("a").text();
+            const link = $(this).find("a").attr("href");
+            const id = link.replace(baseUrl + "anime/", "");
+
+            animeList.push({ anime_name, id, link });
+          });
+
+        scheduleList.push({ day, animeList });
+      });
+
+      res.json({ scheduleList });
+    })
+    .catch((err) => {
+      console.error(err.message);
+      res.status(500).json({
+        status: "error",
+        message: "Internal Server Error",
+      });
     });
-    res.json({ scheduleList });
-  });
 };
+
 exports.genre = (req, res) => {
   const fullUrl = baseUrl + url.genreList;
+
   Axios.get(fullUrl)
     .then((response) => {
       const $ = cheerio.load(response.data);
       const element = $(".genres");
       let genreList = [];
+
       element.find("li > a").each(function (i, el) {
-        let object = {};
-        object.genre_name = $(el).text();
-        object.id = $(el).attr("href").replace("/genres/", "");
-        object.link = baseUrl + $(el).attr("href");
-        object.image_link = ImageList[i];
-        genreList.push(object);
+        const genre_name = $(el).text();
+        const id = $(el).attr("href").replace("/genres/", "");
+        const link = baseUrl + $(el).attr("href");
+        const image_link = ImageList[i];
+
+        genreList.push({ genre_name, id, link, image_link });
       });
+
       res.json({ genreList });
     })
     .catch((err) => {
-      console.log(err.message);
+      console.error(err.message);
+      res.status(500).json({
+        status: "error",
+        message: "Internal Server Error",
+      });
     });
 };
+
 exports.animeByGenre = (req, res) => {
   const pageNumber = req.params.pageNumber;
   const id = req.params.id;
-  const fullUrl = baseUrl + `genres/${id}/page/${pageNumber}`;
-  console.log(fullUrl);
+  const fullUrl = `${baseUrl}genres/${id}/page/${pageNumber}`;
+  console.log(`Fetching URL: ${fullUrl}`);
+
   Axios.get(fullUrl)
     .then((response) => {
       const $ = cheerio.load(response.data);
       const element = $(".page");
       let animeList = [];
-      let genreList = [];
-      let object = {};
-      let genre_name, genre_link, genre_id;
+
       element.find(".col-md-4").each(function () {
-        object = {};
+        const object = {};
         object.anime_name = $(this).find(".col-anime-title").text();
-        object.thumb = $(this).find('div.col-anime-cover > img').attr('src')
+        object.thumb = $(this).find('div.col-anime-cover > img').attr('src');
         object.link = $(this).find(".col-anime-title > a").attr("href");
-        object.id = $(this)
-          .find(".col-anime-title > a")
-          .attr("href")
-          .replace("https://otakudesu.cloud/anime/", "");
+        object.id = $(this).find(".col-anime-title > a").attr("href").replace("https://otakudesu.cloud/anime/", "");
         object.studio = $(this).find(".col-anime-studio").text();
         object.episode = $(this).find(".col-anime-eps").text();
         object.score = parseFloat($(this).find(".col-anime-rating").text());
-        object.release_date = $(this).find(".col-anime-date").text();
-        genreList = [];
-        $(this)
-          .find(".col-anime-genre > a")
-          .each(function () {
-            genre_name = $(this).text();
-            genre_link = $(this).attr("href");
-            genre_id = genre_link.replace("https://otakudesu.cloud/genres/", "");
-            genreList.push({ genre_name, genre_link, genre_id });
-            object.genre_list = genreList;
-          });
+        object.release_date = $(this).find(".col-anime-release").text();
+
         animeList.push(object);
       });
-      res.send({
-        status: "success",
-        baseUrl: fullUrl,
-        animeList,
-      });
+
+      res.json({ animeList });
     })
     .catch((err) => {
-      errors.requestFailed(req, res, err);
+      console.error(err.message);
+      res.status(500).json({
+        status: "error",
+        message: "Internal Server Error",
+      });
     });
 };
+
 exports.search = (req, res) => {
-  const query = req.params.query;
-  const fullUrl = `${baseUrl}?s=${query}&post_type=anime`;
-  Axios.get(fullUrl).then((response) => {
-    const $ = cheerio.load(response.data);
-    const element = $(".page");
-    let obj = {};
-    let anime_list = [];
-    (obj.status = "success"), (obj.baseUrl = fullUrl);
-    if(element.find("ul > li").length === 0){
-      obj.search_results = [];
-    }else {
+  const query = req.query.query;
+  const fullUrl = `${baseUrl}${url.searchAnime}?query=${query}`;
+  console.log(`Searching URL: ${fullUrl}`);
+
+  Axios.get(fullUrl)
+    .then((response) => {
+      const $ = cheerio.load(response.data);
+      const element = $(".search-list");
+      let searchResults = [];
+
       element.find("ul > li").each(function () {
-        const genre_list = [];
-        $(this).find(".set").find("a").each(function () {
-            const genre_result = {
-              genre_title: $(this).text(),
-              genre_link: $(this).attr("href"),
-              genre_id: $(this).attr("href").replace(`${baseUrl}genres/`, ""),
-            };
-            genre_list.push(genre_result);
-          });
-        const results = {
-          thumb: $(this).find("img").attr("src"),
-          title: $(this).find("h2").text(),
-          link: $(this).find("h2 > a").attr("href"),
-          id: $(this).find("h2 > a").attr("href").replace(`${baseUrl}anime/`, ""),
-          status: $(this).find(".set").eq(1).text().replace("Status : ", ""),
-          score: parseFloat(
-            $(this).find(".set").eq(2).text().replace("Rating : ", "")
-          ),
-          genre_list,
-        };
-        anime_list.push(results);
-        obj.search_results = anime_list;
+        const title = $(this).find(".title").text();
+        const thumb = $(this).find(".thumb").attr("src");
+        const link = $(this).find("a").attr("href");
+        const id = link.replace(`${baseUrl}anime/`, "");
+        const episode = $(this).find(".episode").text();
+        const score = parseFloat($(this).find(".score").text().trim());
+
+        searchResults.push({
+          title,
+          id,
+          thumb,
+          episode,
+          link,
+          score,
+        });
       });
-    }
-    res.send(obj);
-  });
+
+      res.json({ searchResults });
+    })
+    .catch((err) => {
+      console.error(err.message);
+      res.status(500).json({
+        status: "error",
+        message: "Internal Server Error",
+      });
+    });
 };
