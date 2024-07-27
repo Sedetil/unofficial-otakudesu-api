@@ -3,13 +3,12 @@ const { default: Axios } = require("axios");
 const cheerio = require("cheerio");
 const errors = require("../helpers/errors");
 const episodeHelper = require("../helpers/episodeHelper");
-const {baseUrl} = require("../helpers/base-url");
+const { baseUrl } = require("../helpers/base-url");
 const e = require("express");
 
 exports.detailAnime = async (req, res) => {
   const id = req.params.id;
   const fullUrl = url.baseUrl + `anime/${id}`;
-  // console.log(fullUrl);
   try {
     const response = await Axios.get(fullUrl);
 
@@ -116,10 +115,10 @@ exports.detailAnime = async (req, res) => {
       episode_list.length === 0
         ? [
             {
-              title: "Maaf, masih kosong bro",
-              id: "Maaf, masih kosong bro",
-              link: "Maaf, masih kosong bro",
-              uploaded_on: "Maaf, masih kosong bro",
+              title: "Tidak ada episode ditemukan",
+              id: null,
+              link: null,
+              uploaded_on: null,
             },
           ]
         : episode_list;
@@ -129,47 +128,43 @@ exports.detailAnime = async (req, res) => {
           ? $("div.venser > div:nth-child(6) > ul > li > span:nth-child(1) > a")
               .attr("href")
               .replace(`https://otakudesu.cloud/batch/`, "")
-          : "Maaf, masih kosong bro",
+          : null,
       link:
         $("div.venser > div:nth-child(6) > ul").text().length !== 0
           ? $(
               "div.venser > div:nth-child(6) > ul > li > span:nth-child(1) > a"
             ).attr("href")
-          : "Maaf, masih kosong bro",
-    };
-    const empty_link = {
-      id: "Maaf, masih kosong bro",
-      link: "Maaf, masih kosong bro",
+          : null,
     };
     object.batch_link = batch_link;
-    //console.log(epsElement);
     res.json(object);
   } catch (err) {
     console.log(err);
     errors.requestFailed(req, res, err);
   }
 };
+
 exports.batchAnime = async (req, res) => {
   const id = req.params.id;
   const fullUrl = `${baseUrl}batch/${id}`;
-  console.log(fullUrl);
-  Axios.get(fullUrl)
-    .then((response) => {
-      const $ = cheerio.load(response.data);
-      const obj = {};
-      obj.title = $(".batchlink > h4").text();
-      obj.status = "success";
-      obj.baseUrl = fullUrl;
-      let low_quality = _batchQualityFunction(0, response.data);
-      let medium_quality = _batchQualityFunction(1, response.data);
-      let high_quality = _batchQualityFunction(2, response.data);
-      obj.download_list = { low_quality, medium_quality, high_quality };
-      res.send(obj);
-    })
-    .catch((err) => {
-      errors.requestFailed(req, res, err);
-    });
+  try {
+    const response = await Axios.get(fullUrl);
+    const $ = cheerio.load(response.data);
+    const obj = {};
+    obj.title = $(".batchlink > h4").text();
+    obj.status = "success";
+    obj.baseUrl = fullUrl;
+    let low_quality = _batchQualityFunction(0, response.data);
+    let medium_quality = _batchQualityFunction(1, response.data);
+    let high_quality = _batchQualityFunction(2, response.data);
+    obj.download_list = { low_quality, medium_quality, high_quality };
+    res.send(obj);
+  } catch (err) {
+    console.log(err);
+    errors.requestFailed(req, res, err);
+  }
 };
+
 exports.epsAnime = async (req, res) => {
   const id = req.params.id;
   const fullUrl = `${url.baseUrl}${id}`;
@@ -182,15 +177,8 @@ exports.epsAnime = async (req, res) => {
     obj.baseUrl = fullUrl;
     obj.id = fullUrl.replace(url.baseUrl, "");
     const streamLink = streamElement.find("iframe").attr("src");
-    // const streamLinkResponse = await Axios.get(streamLink)
-    // const stream$ = cheerio.load(streamLinkResponse.data)
-    // const sl = stream$('body').find('script').html().search('sources')
-    // const endIndex = stream$('body').find('script').eq(0).html().indexOf('}]',sl)
-    // const val = stream$('body').find('script').eq(0).html().substr(sl,endIndex - sl+1).replace(`sources: [{'file':'`,'')
-    // console.log(val);
-    // console.log(val.replace(`','type':'video/mp4'}`,''));
     obj.link_stream = await episodeHelper.get(streamLink);
-    console.log($('#pembed > div > iframe').attr('src'));
+
     let low_quality;
     let medium_quality;
     let high_quality;
@@ -198,33 +186,34 @@ exports.epsAnime = async (req, res) => {
     let mirror2 = [];
     let mirror3 = [];
 
-    $('#embed_holder > div.mirrorstream > ul.m360p > li').each((idx,el)=>{``
+    $('#embed_holder > div.mirrorstream > ul.m360p > li').each((idx, el) => {
       mirror1.push({
-        host:$(el).find('a').text().trim(),
-        id:$(el).find('a').attr('href'),
+        host: $(el).find('a').text().trim(),
+        id: $(el).find('a').attr('href'),
       });
     });
-    $('#embed_holder > div.mirrorstream > ul.m480p > li').each((idx,el)=>{
+    $('#embed_holder > div.mirrorstream > ul.m480p > li').each((idx, el) => {
       mirror2.push({
-        host:$(el).find('a').text().trim(),
-        id:$(el).find('a').attr('href'),
+        host: $(el).find('a').text().trim(),
+        id: $(el).find('a').attr('href'),
       });
     });
-    $('#embed_holder > div.mirrorstream > ul.m720p > li').each((idx,el)=>{
+    $('#embed_holder > div.mirrorstream > ul.m720p > li').each((idx, el) => {
       mirror3.push({
-        host:$(el).find('a').text().trim(),
-        id:$(el).find('a').attr('href'),
+        host: $(el).find('a').text().trim(),
+        id: $(el).find('a').attr('href'),
       });
     });
-    obj.mirror1 = {quality:'360p',mirrorList:mirror1}
-    obj.mirror2 = {quality:'480p',mirrorList:mirror2}
-    obj.mirror3 = {quality:'720p',mirrorList:mirror3}
-    if($('#venkonten > div.venser > div.venutama > div.download > ul > li:nth-child(1)').text() === ''){
+    obj.mirror1 = { quality: '360p', mirrorList: mirror1 };
+    obj.mirror2 = { quality: '480p', mirrorList: mirror2 };
+    obj.mirror3 = { quality: '720p', mirrorList: mirror3 };
+
+    if ($('#venkonten > div.venser > div.venutama > div.download > ul > li:nth-child(1)').text() === '') {
       console.log('ul is empty');
-      low_quality = _notFoundQualityHandler(response.data,0)
-      medium_quality = _notFoundQualityHandler(response.data,1)
-      high_quality = _notFoundQualityHandler(response.data,2)
-    }else{
+      low_quality = _notFoundQualityHandler(response.data, 0);
+      medium_quality = _notFoundQualityHandler(response.data, 1);
+      high_quality = _notFoundQualityHandler(response.data, 2);
+    } else {
       console.log('ul is not empty');
       low_quality = _epsQualityFunction(0, response.data);
       medium_quality = _epsQualityFunction(1, response.data);
@@ -248,97 +237,110 @@ exports.epsMirror = async (req, res) => {
     const obj = {};
     obj.title = $(".venutama > h1").text();
     obj.baseUrl = fullUrl;
-    obj.id = fullUrl.replace(url.baseUrl, "");
-    const streamLink = $('#pembed > div > iframe').attr('src')
-    obj.streamLink = streamLink
-    obj.link_stream = await episodeHelper.get(streamLink);
+    obj.id = fullUrl.replace(baseUrl, "");
+    const downloadList = _epsMirrorFunction(response.data);
+    obj.download_list = downloadList;
     res.send(obj);
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    console.log(err);
     errors.requestFailed(req, res, err);
   }
-}
+};
 
-function _batchQualityFunction(num, res) {
-  const $ = cheerio.load(res);
-  const element = $(".download").find(".batchlink");
-  const download_links = [];
-  let response;
-  element.find("ul").filter(function () {
-    const quality = $(this).find("li").eq(num).find("strong").text();
-    const size = $(this).find("li").eq(num).find("i").text();
-    $(this)
-      .find("li")
-      .eq(num)
-      .find("a")
-      .each(function () {
-        const _list = {
-          host: $(this).text(),
-          link: $(this).attr("href"),
-        };
-        download_links.push(_list);
-        response = { quality, size, download_links };
+function _notFoundQualityHandler(response, idx) {
+  const $ = cheerio.load(response);
+  const quality = $(
+    `div.venser > div.venutama > div.download > ul > li:nth-child(${idx + 1})`
+  )
+    .find("span:nth-child(1)")
+    .text();
+  const size = $(
+    `div.venser > div.venutama > div.download > ul > li:nth-child(${idx + 1})`
+  )
+    .find("span:nth-child(2)")
+    .text();
+  let downloadList = [];
+  $(
+    `div.venser > div.venutama > div.download > ul > li:nth-child(${idx + 1})`
+  )
+    .find("span:nth-child(3) > a")
+    .each((i, el) => {
+      downloadList.push({
+        host: $(el).text(),
+        link: $(el).attr("href"),
       });
-  });
-  return response;
+    });
+  return { quality, size, downloadList };
 }
-function _epsQualityFunction(num, res) {
-  const $ = cheerio.load(res);
-  const element = $(".download");
-  const download_links = [];
-  let response;
 
-  element.find("ul").filter(function () {
-    const quality = $(this).find("li").eq(num).find("strong").text();
-    const size = $(this).find("li").eq(num).find("i").text();
-    $(this).find("li").eq(num).find("a").each(function () {
-        const _list = {
-          host: $(this).text(),
-          link: $(this).attr("href"),
-        };
-        download_links.push(_list);
-        response = { quality, size, download_links };
-        
+function _epsQualityFunction(idx, response) {
+  const $ = cheerio.load(response);
+  const quality = $(
+    `#venkonten > div.venser > div.venutama > div.download > ul > li:nth-child(${
+      idx + 1
+    })`
+  )
+    .find("span:nth-child(1)")
+    .text();
+  const size = $(
+    `#venkonten > div.venser > div.venutama > div.download > ul > li:nth-child(${
+      idx + 1
+    })`
+  )
+    .find("span:nth-child(2)")
+    .text();
+  let downloadList = [];
+  $(
+    `#venkonten > div.venser > div.venutama > div.download > ul > li:nth-child(${
+      idx + 1
+    })`
+  )
+    .find("span:nth-child(3) > a")
+    .each((i, el) => {
+      downloadList.push({
+        host: $(el).text(),
+        link: $(el).attr("href"),
       });
-  });
-  return response;
+    });
+  return { quality, size, downloadList };
 }
 
-function _notFoundQualityHandler(res,num){
-  const $ = cheerio.load(res);
-  const download_links = [];
-  const element = $('.download')
-  let response;
+function _batchQualityFunction(idx, response) {
+  const $ = cheerio.load(response);
+  const quality = $(
+    `#venkonten > div.venser > div.venutama > div.batchlink > div.isilink > ul > li:nth-child(${
+      idx + 1
+    })`
+  )
+    .find("strong")
+    .text();
+  let downloadList = [];
+  $(
+    `#venkonten > div.venser > div.venutama > div.batchlink > div.isilink > ul > li:nth-child(${
+      idx + 1
+    })`
+  )
+    .find("a")
+    .each((i, el) => {
+      downloadList.push({
+        host: $(el).text(),
+        link: $(el).attr("href"),
+      });
+    });
+  return { quality, downloadList };
+}
 
-  element.filter(function(){
-    if($(this).find('.anime-box > .anime-title').eq(0).text() === ''){
-      $(this).find('.yondarkness-box').filter(function(){
-        const quality = $(this).find('.yondarkness-title').eq(num).text().split('[')[1].split(']')[0];
-        const size = $(this).find('.yondarkness-title').eq(num).text().split(']')[1].split('[')[1];
-        $(this).find('.yondarkness-item').eq(num).find('a').each((idx,el) => {
-          const _list = {
-            host: $(el).text(),
-            link: $(el).attr("href"),
-          };
-          download_links.push(_list);
-          response = { quality, size, download_links };
-        })
-      })
-    }else{
-      $(this).find('.anime-box').filter(function(){
-        const quality = $(this).find('.anime-title').eq(num).text().split('[')[1].split(']')[0];
-        const size = $(this).find('.anime-title').eq(num).text().split(']')[1].split('[')[1];
-        $(this).find('.anime-item').eq(num).find('a').each((idx,el) => {
-          const _list = {
-            host: $(el).text(),
-            link: $(el).attr("href"),
-          };
-          download_links.push(_list);
-          response = { quality, size, download_links };
-        })
-      })
-    }
-  })
-  return response;
-
+function _epsMirrorFunction(response) {
+  const $ = cheerio.load(response);
+  const quality = $("#venkonten > div.venser > div.venutama > h4")
+    .text()
+    .replace(" Link Download ", "");
+  let downloadList = [];
+  $("#venkonten > div.venser > div.venutama > ul > li").each((i, el) => {
+    downloadList.push({
+      host: $(el).find("a").text(),
+      link: $(el).find("a").attr("href"),
+    });
+  });
+  return { quality, downloadList };
 }
