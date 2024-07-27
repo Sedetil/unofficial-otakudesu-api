@@ -16,7 +16,7 @@ app.use('/api',router)
 app.use('/',(req,res)=>{
     res.send({
         message : 'Welcome To Unofficial Otakudesu Rest Api',
-        createdBy : 'Zyarexx/Rakarmp Create With Love <3'
+        createdBy : 'Wanzz/Sedetil Create With Love <3'
     })
 })
 app.use('/api',(req,res) =>{
